@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title> File Handler and Editor panel</title>
+    <style>
+        :root { --primary: #4f46e5; --danger: #ef4444; --bg: #f1f5f9; }
+        body { display: flex; height: 100vh; margin: 0; font-family: sans-serif; background: var(--bg); overflow: hidden; }
+        .sidebar { width: 360px; background: white; padding: 25px; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; }
+        .main { flex-grow: 1; padding: 40px; overflow-y: auto; display: flex; justify-content: center; }
+        .paper { 
+            background: white; width: 100%; max-width: 800px; min-height: 1000px; padding: 60px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05); font-family: 'Courier New', monospace; 
+            white-space: pre-wrap; font-size: 1.1rem; line-height: 1.6;
+        }
+        .msg { padding: 10px; border-radius: 6px; font-size: 0.8rem; margin-bottom: 15px; text-align: center; }
+        .error { background: #fee2e2; color: #b91c1c; }
+        .success { background: #dcfce7; color: #166534; }
+        label { display: block; font-weight: bold; font-size: 0.7rem; color: #64748b; margin-top: 15px; text-transform: uppercase; }
+        input, textarea { width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; box-sizing: border-box; margin-top: 5px; }
+        button { width: 100%; padding: 14px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .btn-blue { background: var(--primary); color: white; }
+        .btn-dark { background: #1e293b; color: white; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h2 style="margin:0 0 15px 0;">File Handler and Editor Panel</h2>
+        {% if error %}<div class="msg error">{{ error }}</div>{% endif %}
+        {% if success %}<div class="msg success">{{ success }}</div>{% endif %}
+
+        <form method="post" enctype="multipart/form-data">
+            {% if not current_matter %}
+                <label>Text Input</label>
+                <textarea name="initial_text" rows="5" placeholder="Paste matter here..."></textarea>
+                <label>File Upload</label>
+                <input type="file" name="file_input">
+                <button type="submit" name="action" value="load" class="btn-blue">LOAD CONTENT</button>
+            {% else %}
+                <label>Find Word</label>
+                <input type="text" name="search_word" autocomplete="off" placeholder="Enter word to find..." required>
+
+                <label>Replace With</label>
+                <input type="text" name="replace_word" autocomplete="off" placeholder="Enter new word..." required>
+                
+                <button type="submit" name="action" value="replace" class="btn-dark">APPLY Changes & Save</button>
+                <button type="submit" name="action" value="print" class="btn-blue">GENERATE FINAL</button>
+                <button type="submit" name="action" value="reset" style="background:none; color:var(--danger); text-decoration:underline;">Discard Everything</button>
+            {% endif %}
+        </form>
+    </div>
+    <div class="main">
+        <div class="paper">{{ current_matter or "No content loaded." }}</div>
+    </div>
+</body>
+</html>
