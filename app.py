@@ -1,5 +1,4 @@
-from flask import Flask, render_template, request, session, redirect, url_for
-import os
+import streamlit as st
 import PyPDF2
 from PIL import Image
 import numpy as np
@@ -12,68 +11,96 @@ try:
 except ImportError:
     OCR_AVAILABLE = False
 
-app = Flask(__name__)
-app.secret_key = "clean_slate_key_2026"
+st.set_page_config(page_title="File Handler", layout="wide")
+
+# Session state (replacement for Flask session)
+if "matter" not in st.session_state:
+    st.session_state.matter = ""
 
 def extract_content(file):
     try:
-        filename = file.filename.lower()
+        filename = file.name.lower()
+
         if filename.endswith('.txt'):
             return file.read().decode('utf-8')
+
         elif filename.endswith('.pdf'):
             reader_pdf = PyPDF2.PdfReader(file)
             return " ".join([p.extract_text() or "" for p in reader_pdf.pages])
+
         elif filename.endswith(('.jpg', '.jpeg', '.png')):
             if not OCR_AVAILABLE:
                 return "ERROR: OCR Engine not found."
+
             img = Image.open(file).convert('RGB')
             results = reader.readtext(np.array(img), detail=0)
             return " ".join(results)
+
     except Exception as e:
         return f"ERROR: {str(e)}"
+
     return ""
 
-@app.route('/', methods=['GET', 'POST'])
-def index():
-    if 'matter' not in session: session['matter'] = ""
-    error, success = "", ""
+# UI
+st.title("📄 File Handler App")
 
-    if request.method == 'POST':
-        action = request.form.get('action')
-        
-        if action == "reset":
-            session.clear()
-            return redirect(url_for('index'))
+# Load section
+st.subheader("Load Text / File")
 
-        try:
-            if action == "load":
-                text = request.form.get('initial_text', '').strip()
-                file = request.files.get('file_input')
-                if text:
-                    session['matter'] = text
-                    success = "Text loaded."
-                elif file and file.filename:
-                    res = extract_content(file)
-                    if "ERROR" in res: error = res
-                    else:
-                        session['matter'] = res
-                        success = "File imported."
-            
-            elif action == "replace":
-                s = request.form.get('search_word', '')
-                r = request.form.get('replace_word', '')
-                if s and s in session['matter']:
-                    session['matter'] = session['matter'].replace(s, r)
-                    success = "Word replaced."
-                else: error = f"'{s}' not found."
-            
-            elif action == "print":
-                return render_template('print.html', final_matter=session['matter'])
-                
-        except Exception:
-            error = "System error occurred."
+text_input = st.text_area("Enter text manually")
 
-    return render_template('index.html', current_matter=session['matter'], error=error, success=success)
+uploaded_file = st.file_uploader(
+    "Upload file",
+    type=["txt", "pdf", "jpg", "jpeg", "png"]
+)
 
-if __name__ == '__main__':
-    app.run(debug=True)
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    if st.button("Load"):
+        if text_input.strip():
+            st.session_state.matter = text_input
+            st.success("Text loaded.")
+
+        elif uploaded_file:
+            res = extract_content(uploaded_file)
+            if "ERROR" in res:
+                st.error(res)
+            else:
+                st.session_state.matter = res
+                st.success("File imported.")
+
+        else:
+            st.warning("Provide text or upload a file.")
+
+with col2:
+    if st.button("Reset"):
+        st.session_state.matter = ""
+        st.success("Reset done.")
+
+# Replace section
+st.subheader("Find & Replace")
+
+search_word = st.text_input("Search word")
+replace_word = st.text_input("Replace with")
+
+if st.button("Replace"):
+    if search_word and search_word in st.session_state.matter:
+        st.session_state.matter = st.session_state.matter.replace(search_word, replace_word)
+        st.success("Word replaced.")
+    else:
+        st.error(f"'{search_word}' not found.")
+
+# Display content
+st.subheader("Current Content")
+st.text_area("Output", st.session_state.matter, height=300)
+
+# Print / Download
+st.subheader("Download")
+
+st.download_button(
+    label="Download Text File",
+    data=st.session_state.matter,
+    file_name="output.txt",
+    mime="text/plain"
+)
